@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Pizza Raúl | Sistema de Pedidos</title>
+
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <!-- Leaflet Routing Machine -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css"
+  />
+</head>
+
+<body>
+
+  <!-- LOGIN -->
+  <section id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <img src="Pizza-Raul-Logo.png" alt="Logo Pizza Raúl" class="login-logo">
+
+      <h1>Sistema de Pedidos Pizza Raúl</h1>
+      <p>
+        Plataforma integral para gestionar pedidos, cocina, reparto,
+        seguimiento y reportes operativos.
+      </p>
+
+      <div class="roles-grid">
+        <button onclick="login('cliente')" class="role-btn">
+          <span>👤</span>
+          Cliente
+          <small>Seguimiento y estado de pedido</small>
+        </button>
+
+        <button onclick="login('cajero')" class="role-btn">
+          <span>💻</span>
+          Cajero
+          <small>Registro, validación y despacho</small>
+        </button>
+
+        <button onclick="login('cocinero')" class="role-btn">
+          <span>👨‍🍳</span>
+          Cocina
+          <small>Preparación y control de pedidos</small>
+        </button>
+
+        <button onclick="login('motorizado')" class="role-btn">
+          <span>🏍️</span>
+          Motorizado
+          <small>Rutas y entregas</small>
+        </button>
+
+        <button onclick="login('admin')" class="role-btn admin-role">
+          <span>📊</span>
+          Administrador
+          <small>Reportes, indicadores y control</small>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- APP -->
+  <section id="app" class="app hidden">
+
+    <header class="main-header">
+      <div class="brand">
+        <img src="Pizza-Raul-Logo.png" alt="Pizza Raúl" class="header-logo">
+        <div>
+          <h2>Pizza Raúl</h2>
+          <p id="headerSubtitle">Sistema de Gestión Operativa</p>
+        </div>
+      </div>
+
+      <div class="user-panel">
+        <strong id="roleTitle">Usuario</strong>
+        <span id="roleDesc">Vista del sistema</span>
+        <button onclick="logout()">Cerrar sesión</button>
+      </div>
+    </header>
+
+    <main class="main-container">
+
+      <!-- CLIENTE -->
+      <section id="clienteView" class="view hidden">
+        <div class="welcome-card cliente-bg">
+          <div>
+            <h1>Hola, bienvenido a Pizza Raúl</h1>
+            <p>Realiza tu pedido y consulta el seguimiento en tiempo real.</p>
+          </div>
+          <span class="welcome-icon">🍕</span>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h2>Nuevo pedido</h2>
+            <p class="muted">Registra tu pedido delivery con tus datos de entrega.</p>
+
+            <div class="form-grid">
+              <label>
+                Nombre
+                <input id="cliNombre" value="Carlos Mendoza">
+              </label>
+
+              <label>
+                Teléfono
+                <input id="cliTelefono" value="987654321">
+              </label>
+
+              <label class="full">
+                Dirección
+                <input id="cliDireccion" value="Av. Universitaria 1500, San Miguel">
+              </label>
+
+              <label>
+                Producto
+                <select id="cliProducto">
+                  <option>Pizza Americana Familiar + Gaseosa</option>
+                  <option>Pizza Pepperoni Familiar</option>
+                  <option>Pizza Hawaiana + Alitas</option>
+                  <option>Combo Raúl Familiar</option>
+                  <option>Pizza Suprema Familiar + Bebida</option>
+                </select>
+              </label>
+
+              <label>
+                Método de pago
+                <select id="cliPago">
+                  <option>Yape</option>
+                  <option>Plin</option>
+                  <option>Tarjeta</option>
+                  <option>Efectivo</option>
+                </select>
+              </label>
+
+              <label class="full">
+                Indicaciones
+                <textarea id="cliIndicaciones">Enviar con ají, servilletas y llamar al llegar.</textarea>
+              </label>
+            </div>
+
+            <button class="btn" onclick="crearPedidoCliente()">Confirmar pedido</button>
+          </div>
+
+          <div class="card">
+            <h2>Seguimiento de mi pedido</h2>
+            <p class="muted">Consulta el avance del pedido desde la recepción hasta la entrega.</p>
+            <div id="seguimientoCliente"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CAJERO -->
+      <section id="cajeroView" class="view hidden">
+        <div class="welcome-card cajero-bg">
+          <div>
+            <h1>Panel de Caja</h1>
+            <p>Registro de pedidos, validación de datos, envío a cocina y asignación de motorizados.</p>
+          </div>
+          <span class="welcome-icon">💻</span>
+        </div>
+
+        <div class="kpi-grid">
+          <article class="kpi">
+            <span>Pedidos recibidos</span>
+            <strong id="cajKpiRecibidos">0</strong>
+          </article>
+
+          <article class="kpi yellow">
+            <span>Pendientes de cocina</span>
+            <strong id="cajKpiPendientes">0</strong>
+          </article>
+
+          <article class="kpi blue">
+            <span>Listos para asignar</span>
+            <strong id="cajKpiListos">0</strong>
+          </article>
+
+          <article class="kpi green">
+            <span>En reparto</span>
+            <strong id="cajKpiReparto">0</strong>
+          </article>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h2>Registrar pedido</h2>
+            <p class="muted">Pedido recibido por llamada, app, web o plataforma externa.</p>
+
+            <div class="form-grid">
+              <label>
+                Cliente
+                <input id="cajNombre" value="María Torres">
+              </label>
+
+              <label>
+                Teléfono
+                <input id="cajTelefono" value="912456789">
+              </label>
+
+              <label class="full">
+                Dirección
+                <input id="cajDireccion" value="Jr. Las Begonias 120, Pueblo Libre">
+              </label>
+
+              <label>
+                Pedido
+                <select id="cajProducto">
+                  <option>Pizza Suprema Familiar + Bebida</option>
+                  <option>Pizza Americana Grande</option>
+                  <option>Pizza BBQ Chicken + Papas</option>
+                  <option>Combo Raúl Familiar</option>
+                </select>
+              </label>
+
+              <label>
+                Pago
+                <select id="cajPago">
+                  <option>Yape</option>
+                  <option>Tarjeta</option>
+                  <option>Efectivo</option>
+                  <option>Plataforma externa</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="actions">
+              <button class="btn" onclick="registrarDesdeCaja()">Registrar y validar</button>
+              <button class="btn green" onclick="enviarACocina()">Enviar a cocina</button>
+              <button class="btn blue" onclick="asignarMotorizado()">Asignar motorizado</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Pedidos para gestión</h2>
+            <p class="muted">Selecciona una orden para ver su detalle y continuar el proceso.</p>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Pedido</th>
+                  <th>Cliente</th>
+                  <th>Estado</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tablaCajero"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Detalle de orden seleccionada</h2>
+          <div id="detalleCajero" class="detail-empty">
+            Selecciona una orden para visualizar información completa del pedido.
+          </div>
+        </div>
+      </section>
+
+      <!-- COCINERO -->
+      <section id="cocinaView" class="view hidden">
+        <div class="welcome-card cocina-bg">
+          <div>
+            <h1>Pantalla de Cocina</h1>
+            <p>Visualiza pedidos, prepara productos y valida el pedido antes del despacho.</p>
+          </div>
+          <span class="welcome-icon">👨‍🍳</span>
+        </div>
+
+        <div class="kds-grid">
+          <div class="card">
+            <h2>Pedidos en cocina</h2>
+            <p class="muted">Órdenes recibidas para preparación.</p>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Pedido</th>
+                  <th>Producto</th>
+                  <th>Indicaciones</th>
+                  <th>Estado</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tablaCocina"></tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <h2>Detalle de preparación</h2>
+            <div id="detalleCocina" class="detail-empty">
+              Selecciona un pedido para ver productos, indicaciones y control de preparación.
+            </div>
+
+            <h2 class="mt">Control de calidad</h2>
+            <p class="muted">Verifica que el pedido esté completo antes del despacho.</p>
+
+            <div class="checklist">
+              <label><span>Pizza correcta</span><input type="checkbox" class="check"></label>
+              <label><span>Bebida incluida</span><input type="checkbox" class="check"></label>
+              <label><span>Salsas y adicionales</span><input type="checkbox" class="check"></label>
+              <label><span>Ticket de pedido</span><input type="checkbox" class="check"></label>
+              <label><span>Empaque correcto</span><input type="checkbox" class="check"></label>
+            </div>
+
+            <button class="btn green" onclick="validarDespacho()">Validar pedido</button>
+            <div id="checkResultado"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MOTORIZADO -->
+      <section id="motorizadoView" class="view hidden">
+        <div class="welcome-card moto-bg">
+          <div>
+            <h1>Panel de Motorizado</h1>
+            <p>Consulta pedidos asignados, rutas sugeridas y confirma las entregas.</p>
+          </div>
+          <span class="welcome-icon">🏍️</span>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h2>Mis pedidos asignados</h2>
+            <p class="muted">Pedidos preparados y listos para reparto.</p>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Pedido</th>
+                  <th>Cliente</th>
+                  <th>Dirección</th>
+                  <th>Estado</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tablaMotorizado"></tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <h2>Detalle de entrega</h2>
+            <div id="detalleMotorizado" class="detail-empty">
+              Selecciona un pedido para ver la información de entrega.
+            </div>
+
+            <h2 class="mt">Mapa de ruta</h2>
+            <div id="mapaRuta" class="real-map"></div>
+
+            <div id="rutaInfo" class="route-box">
+              Selecciona un pedido asignado para calcular la ruta.
+            </div>
+
+            <div class="actions">
+              <button class="btn blue" onclick="optimizarRuta()">Calcular ruta</button>
+              <button class="btn" onclick="registrarSalida()">Registrar salida</button>
+              <button class="btn green" onclick="registrarEntrega()">Confirmar entrega</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADMIN -->
+      <section id="adminView" class="view hidden">
+        <div class="welcome-card admin-bg">
+          <div>
+            <h1>Panel Administrativo</h1>
+            <p>Indicadores de pedidos, desempeño de reparto, tiempos de entrega e incidencias.</p>
+          </div>
+          <span class="welcome-icon">📊</span>
+        </div>
+
+        <div class="kpi-grid">
+          <article class="kpi">
+            <span>Total pedidos</span>
+            <strong id="admTotal">0</strong>
+          </article>
+
+          <article class="kpi green">
+            <span>Entregados</span>
+            <strong id="admEntregados">0</strong>
+          </article>
+
+          <article class="kpi yellow">
+            <span>En preparación</span>
+            <strong id="admPreparacion">0</strong>
+          </article>
+
+          <article class="kpi blue">
+            <span>En reparto</span>
+            <strong id="admReparto">0</strong>
+          </article>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h2>Reporte operativo</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Indicador</th>
+                  <th>Resultado</th>
+                  <th>Interpretación</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Tiempo promedio de entrega</td>
+                  <td>38 minutos</td>
+                  <td>Tiempo aceptable para horario de alta demanda.</td>
+                </tr>
+                <tr>
+                  <td>Pedidos retrasados</td>
+                  <td>2</td>
+                  <td>Revisar disponibilidad de motorizados en horas pico.</td>
+                </tr>
+                <tr>
+                  <td>Pedidos incompletos</td>
+                  <td>1</td>
+                  <td>El checklist ayuda a controlar errores antes del despacho.</td>
+                </tr>
+                <tr>
+                  <td>Desempeño de reparto</td>
+                  <td>Bueno</td>
+                  <td>La ruta sugerida reduce tiempos de entrega.</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <button class="btn green" onclick="generarReporte()">Generar reporte</button>
+          </div>
+
+          <div class="card">
+            <h2>Historial de pedidos</h2>
+            <p class="muted">Selecciona una orden para revisar datos completos del servicio.</p>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Pedido</th>
+                  <th>Cliente</th>
+                  <th>Estado</th>
+                  <th>Motorizado</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tablaAdmin"></tbody>
+            </table>
+
+            <div id="detalleAdmin" class="detail-empty mt">
+              Selecciona un pedido para ver el detalle administrativo.
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </section>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Leaflet Routing Machine -->
+  <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
+  <!-- App -->
+  <script src="script.js"></script>
+</body>
+</html>
