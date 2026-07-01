@@ -51,10 +51,16 @@ let currentRole = null;
 let selectedPedido = null;
 let mapa = null, rutaControl = null, marcadorTienda = null, marcadorCliente = null;
 
+// Se añaden pedidos con estados específicos de reparto para ver el funcionamiento de la vista de motorizado
 let pedidos = [
   { id: "PR-1001", cliente: "Luis Herrera", telefono: "999111222", direccion: "Av. Universitaria 1500, San Miguel", producto: "Pizza Americana Familiar + Gaseosa", pago: "Yape", indicaciones: "Enviar con ají.", estado: "recibido", motorizado: "-" },
   { id: "PR-1002", cliente: "Rosa Delgado", telefono: "988777444", direccion: "Jr. Lima 345, Pueblo Libre", producto: "Pizza Pepperoni Familiar", pago: "Tarjeta", indicaciones: "Sin orégano.", estado: "en preparación", motorizado: "-" },
-  { id: "PR-1003", cliente: "Andrés Salazar", telefono: "955222111", direccion: "Calle Las Flores 811, Magdalena", producto: "Combo Raúl Familiar", pago: "Efectivo", indicaciones: "Pagar con 100 soles.", estado: "entregado", motorizado: "Miguel R." }
+  { id: "PR-1003", cliente: "Andrés Salazar", telefono: "955222111", direccion: "Calle Las Flores 811, Magdalena", producto: "Combo Raúl Familiar", pago: "Efectivo", indicaciones: "Pagar con 100 soles.", estado: "entregado", motorizado: "Miguel R." },
+  
+  // Pedidos nuevos visibles en el panel de Motorizados:
+  { id: "PR-1004", cliente: "Carlos Gómez", telefono: "944555666", direccion: "Av. Universitaria 1200, San Miguel", producto: "Pizza Pepperoni Familiar", pago: "Yape", indicaciones: "Tocar el timbre del portón gris.", estado: "preparado", motorizado: "-" },
+  { id: "PR-1005", cliente: "Ana Martínez", telefono: "933222111", direccion: "Jr. Las Begonias 450, Pueblo Libre", producto: "Pizza Americana Familiar + Gaseosa", pago: "Tarjeta", indicaciones: "Entregar en recepción.", estado: "asignado", motorizado: "Miguel R." },
+  { id: "PR-1006", cliente: "Jorge Chávez", telefono: "922888777", direccion: "Av. La Marina 2100, San Miguel", producto: "Combo Raúl Familiar", pago: "Efectivo", indicaciones: "Llamar al llegar.", estado: "en reparto", motorizado: "Miguel R." }
 ];
 
 /* --- AUTH Y ERP NAV --- */
@@ -75,26 +81,20 @@ function toggleAuth(type) {
 function iniciarSesion(e) {
   e.preventDefault();
   
-  // 1. Capturamos los elementos del DOM
   const emailInput = document.getElementById('emailInput');
   const passwordInput = document.getElementById('passwordInput');
   
-  // 2. Extraemos los valores
   const email = emailInput.value;
-  const password = passwordInput.value; // ¡Variable declarada!
+  const password = passwordInput.value;
 
-  // 3. Lógica de validación
-  // Se ha usado '1234' para ser coherente con el original y las expectativas más comunes, pero se puede cambiar.
   if (email.toLowerCase() === 'admin@pizzaraul.com' && (password === '1234' || password === 'admin123')) {
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
     
-    // Si es admin, mostramos el menú ERP
     document.getElementById('erpNav').classList.remove('hidden');
     cambiarVistaERP('admin');
     toast("Bienvenido Administrador");
   } else {
-    // Lógica para usuarios normales u otros correos
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
     
@@ -198,7 +198,7 @@ function renderAdmin() {
 /* --- MÓDULO FINANCIERO / REPORTES --- */
 function cierreCaja() {
   toast("💰 Procesando Cierre de Caja...");
-  setTimeout(() => { toast("✅ Cierre exitoso. Total reportado: S/ 3,450.00."); }, 1800);
+  setTimeout(() => { toast("✅ Cierre exitoso. Total reportado: S/ 4,890.00."); }, 1800);
 }
 
 function generarReportePDF() {
@@ -323,14 +323,12 @@ function inicializarMapa() {
   setTimeout(() => mapa.invalidateSize(), 300);
 }
 
-function optimizarRuta() {
-  const p = pedidos.find(x => x.id === selectedPedido);
-  if (!p) return;
-  inicializarMapa();
+function dibujarRutaEnMapa(p) {
+  if (!p || !mapa) return;
   if (rutaControl) mapa.removeControl(rutaControl);
   if (marcadorCliente) mapa.removeLayer(marcadorCliente);
   
-  const dest = p.direccion.toLowerCase().includes("san miguel") ? [-12.0764, -77.0928] : [-12.0818, -77.0756];
+  const dest = p.direccion.toLowerCase().includes("pueblo libre") ? [-12.0818, -77.0756] : [-12.0764, -77.0928];
   marcadorCliente = L.marker(dest).addTo(mapa).bindPopup(`📍 ${p.cliente}`).openPopup();
   
   rutaControl = L.Routing.control({
@@ -341,8 +339,14 @@ function optimizarRuta() {
   }).addTo(mapa);
   
   const ri = document.getElementById("rutaInfo");
-  if (ri) ri.innerHTML = `<strong>Ruta calculada para ${p.id}</strong><br>Distancia: ~4.5 km<br>Tiempo: ~18 min`;
-  toast("Ruta calculada en el mapa.");
+  if (ri) ri.innerHTML = `<strong>Ruta para ${p.id}</strong><br>Dirección: ${p.direccion}<br>Distancia estimada: ~3.8 km`;
+}
+
+function optimizarRuta() {
+  const p = pedidos.find(x => x.id === selectedPedido);
+  if (!p) { toast("Selecciona un pedido primero."); return; }
+  dibujarRutaEnMapa(p);
+  toast("Ruta calculada con éxito.");
 }
 
 function badge(e) { return `<span class="badge ${e === 'recibido'?'recibido':e==='en preparación'?'preparacion':e==='en reparto'?'reparto':e==='entregado'?'entregado':'listo'}">${e.toUpperCase()}</span>`; }
