@@ -1,193 +1,154 @@
-const roleInfo = {
-  cliente: {
-    title: "Cliente",
-    desc: "Seguimiento de pedidos y registro de compras."
+// Base de datos de Inventario (Cantidades iniciales)
+let inventario = {
+  "Masa base": 18,
+  "Salsa (g)": 2000,
+  "Queso (g)": 1200,
+  "Pepperoni (porc)": 15,
+  "Piña (porc)": 30,
+  "Jamón (porc)": 40,
+  "Pollo BBQ (porc)": 20,
+  "Papas (porc)": 25,
+  "Alitas (porc)": 30,
+  "Gaseosa 1.5L": 10,
+  "Cajas": 25
+};
+
+// Umbrales para alertas inteligentes del ERP
+const umbralesInventario = {
+  "Masa base": 20,
+  "Salsa (g)": 1000,
+  "Queso (g)": 1500,
+  "Pepperoni (porc)": 20,
+  "Gaseosa 1.5L": 15,
+  "Cajas": 30
+};
+
+// Estandarización: Recetas y sus órdenes de producción
+const recetas = {
+  "Pizza Americana Familiar + Gaseosa": {
+    ingredientes: { "Masa base": 1, "Salsa (g)": 150, "Queso (g)": 250, "Jamón (porc)": 1, "Gaseosa 1.5L": 1, "Cajas": 1 },
+    pasos: ["Amasar y estirar masa", "Esparcir salsa y queso", "Distribuir jamón", "Hornear a 250°C", "Empacar con gaseosa"]
   },
-  cajero: {
-    title: "Cajero",
-    desc: "Registro, validación, cocina y despacho."
+  "Pizza Pepperoni Familiar": {
+    ingredientes: { "Masa base": 1, "Salsa (g)": 150, "Queso (g)": 250, "Pepperoni (porc)": 1, "Cajas": 1 },
+    pasos: ["Amasar y estirar masa", "Esparcir salsa y queso", "Distribuir pepperoni", "Hornear a 250°C", "Empacar en caja"]
   },
-  cocinero: {
-    title: "Cocina",
-    desc: "Preparación de pedidos y control de calidad."
-  },
-  motorizado: {
-    title: "Motorizado",
-    desc: "Rutas asignadas, salida y confirmación de entrega."
-  },
-  admin: {
-    title: "Administrador",
-    desc: "Indicadores, reportes y control de operación."
+  "Combo Raúl Familiar": {
+    ingredientes: { "Masa base": 1, "Salsa (g)": 150, "Queso (g)": 250, "Pepperoni (porc)": 1, "Papas (porc)": 1, "Gaseosa 1.5L": 1, "Cajas": 1 },
+    pasos: ["Preparar pizza pepperoni", "Hornear pizza", "Freír papas", "Empacar combo completo"]
   }
+};
+
+const roleInfo = {
+  cliente: { title: "Portal Cliente", desc: "Seguimiento de pedidos." },
+  cajero: { title: "Cajero (Punto de Venta)", desc: "Registro y despacho." },
+  cocina: { title: "Línea de Producción", desc: "Preparación y calidad." },
+  motorizado: { title: "Logística y Reparto", desc: "Rutas y entregas." },
+  admin: { title: "Administración (ERP)", desc: "Control total, financiero y stock." }
 };
 
 let currentRole = null;
 let selectedPedido = null;
-
-let mapa = null;
-let rutaControl = null;
-let marcadorTienda = null;
-let marcadorCliente = null;
+let mapa = null, rutaControl = null, marcadorTienda = null, marcadorCliente = null;
 
 let pedidos = [
-  {
-    id: "PR-1001",
-    cliente: "Luis Herrera",
-    telefono: "999111222",
-    direccion: "Av. Universitaria 1500, San Miguel",
-    producto: "Pizza Americana Familiar + Gaseosa",
-    pago: "Yape",
-    indicaciones: "Enviar con ají y servilletas.",
-    estado: "recibido",
-    motorizado: "-"
-  },
-  {
-    id: "PR-1002",
-    cliente: "Rosa Delgado",
-    telefono: "988777444",
-    direccion: "Jr. Lima 345, Pueblo Libre",
-    producto: "Pizza Pepperoni Familiar",
-    pago: "Tarjeta",
-    indicaciones: "Sin orégano.",
-    estado: "en preparación",
-    motorizado: "-"
-  },
-  {
-    id: "PR-1003",
-    cliente: "Andrés Salazar",
-    telefono: "955222111",
-    direccion: "Calle Las Flores 811, Magdalena",
-    producto: "Combo Raúl Familiar",
-    pago: "Efectivo",
-    indicaciones: "Pagar con 100 soles.",
-    estado: "en reparto",
-    motorizado: "Miguel R."
-  },
-  {
-    id: "PR-1004",
-    cliente: "Diana Paredes",
-    telefono: "944888111",
-    direccion: "Av. La Marina 620, San Miguel",
-    producto: "Pizza Hawaiana + Alitas",
-    pago: "Plin",
-    indicaciones: "Departamento 501.",
-    estado: "entregado",
-    motorizado: "Jorge V."
-  },
-  {
-    id: "PR-1005",
-    cliente: "María Torres",
-    telefono: "912456789",
-    direccion: "Jr. Las Begonias 120, Pueblo Libre",
-    producto: "Pizza Suprema Familiar + Bebida",
-    pago: "Tarjeta",
-    indicaciones: "Entregar en recepción.",
-    estado: "asignado",
-    motorizado: "Miguel R."
-  },
-  {
-    id: "PR-1006",
-    cliente: "Raúl Gutiérrez",
-    telefono: "966333222",
-    direccion: "Av. Brasil 980, Magdalena",
-    producto: "Pizza BBQ Chicken + Papas",
-    pago: "Yape",
-    indicaciones: "Llamar antes de llegar.",
-    estado: "preparado",
-    motorizado: "-"
-  }
+  { id: "PR-1001", cliente: "Luis Herrera", telefono: "999111222", direccion: "Av. Universitaria 1500, San Miguel", producto: "Pizza Americana Familiar + Gaseosa", pago: "Yape", indicaciones: "Enviar con ají.", estado: "recibido", motorizado: "-" },
+  { id: "PR-1002", cliente: "Rosa Delgado", telefono: "988777444", direccion: "Jr. Lima 345, Pueblo Libre", producto: "Pizza Pepperoni Familiar", pago: "Tarjeta", indicaciones: "Sin orégano.", estado: "en preparación", motorizado: "-" },
+  { id: "PR-1003", cliente: "Andrés Salazar", telefono: "955222111", direccion: "Calle Las Flores 811, Magdalena", producto: "Combo Raúl Familiar", pago: "Efectivo", indicaciones: "Pagar con 100 soles.", estado: "entregado", motorizado: "Miguel R." }
 ];
 
-function login(role) {
-  currentRole = role;
+/* --- AUTH Y ERP NAV --- */
+function toggleAuth(type) {
+  const tabLogin = document.getElementById('tabLogin');
+  const tabRegister = document.getElementById('tabRegister');
+  const btnSubmit = document.getElementById('authSubmitBtn');
 
-  document.getElementById("loginScreen").classList.add("hidden");
-  document.getElementById("app").classList.remove("hidden");
-
-  document.getElementById("roleTitle").textContent = roleInfo[role].title;
-  document.getElementById("roleDesc").textContent = roleInfo[role].desc;
-  document.getElementById("headerSubtitle").textContent = roleInfo[role].desc;
-
-  hideAllViews();
-
-  if (role === "cliente") showOnly("clienteView");
-  if (role === "cajero") showOnly("cajeroView");
-  if (role === "cocinero") showOnly("cocinaView");
-
-  if (role === "motorizado") {
-    showOnly("motorizadoView");
-    setTimeout(inicializarMapa, 300);
+  if (type === 'login') {
+    tabLogin.classList.add('active'); tabRegister.classList.remove('active');
+    btnSubmit.textContent = 'Ingresar al Sistema';
+  } else {
+    tabRegister.classList.add('active'); tabLogin.classList.remove('active');
+    btnSubmit.textContent = 'Crear Cuenta';
   }
+}
 
-  if (role === "admin") showOnly("adminView");
+function iniciarSesion(e) {
+  e.preventDefault();
+  
+  // 1. Capturamos los elementos del DOM
+  const emailInput = document.getElementById('emailInput');
+  const passwordInput = document.getElementById('passwordInput');
+  
+  // 2. Extraemos los valores
+  const email = emailInput.value;
+  const password = passwordInput.value; // ¡Variable declarada!
 
-  renderAll();
-  toast("Sesión iniciada como " + roleInfo[role].title);
+  // 3. Lógica de validación
+  // Se ha usado '1234' para ser coherente con el original y las expectativas más comunes, pero se puede cambiar.
+  if (email.toLowerCase() === 'admin@pizzaraul.com' && (password === '1234' || password === 'admin123')) {
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    
+    // Si es admin, mostramos el menú ERP
+    document.getElementById('erpNav').classList.remove('hidden');
+    cambiarVistaERP('admin');
+    toast("Bienvenido Administrador");
+  } else {
+    // Lógica para usuarios normales u otros correos
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    
+    document.getElementById('erpNav').classList.add('hidden');
+    cambiarVistaERP('cajero');
+    toast("Sesión iniciada");
+  }
 }
 
 function logout() {
-  currentRole = null;
-  selectedPedido = null;
-
+  currentRole = null; selectedPedido = null;
   document.getElementById("loginScreen").classList.remove("hidden");
   document.getElementById("app").classList.add("hidden");
-
+  document.getElementById('authForm').reset();
   limpiarDetalles();
   toast("Sesión cerrada");
 }
 
-function hideAllViews() {
-  document.querySelectorAll(".view").forEach(view => view.classList.add("hidden"));
+function cambiarVistaERP(vistaDestino) {
+  currentRole = vistaDestino;
+  document.getElementById("roleTitle").textContent = roleInfo[vistaDestino].title;
+  document.getElementById("roleDesc").textContent = roleInfo[vistaDestino].desc;
+  document.getElementById("headerSubtitle").textContent = roleInfo[vistaDestino].desc;
+
+  document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
+  document.getElementById(vistaDestino + 'View').classList.remove("hidden");
+  
+  if (vistaDestino === "motorizado" || vistaDestino === "admin") {
+    setTimeout(inicializarMapa, 300);
+  }
+  renderAll();
 }
 
-function showOnly(viewId) {
-  document.getElementById(viewId).classList.remove("hidden");
-}
-
+/* --- RENDERERS --- */
 function renderAll() {
-  renderCliente();
-  renderCajero();
-  renderCocina();
-  renderMotorizado();
-  renderAdmin();
-
+  renderCliente(); renderCajero(); renderCocina(); renderMotorizado(); renderAdmin(); renderInventario();
   if (selectedPedido) {
-    const pedido = pedidos.find(p => p.id === selectedPedido);
-    if (pedido) renderDetallePedido(pedido);
+    const p = pedidos.find(x => x.id === selectedPedido);
+    if (p) renderDetallePedido(p);
   }
 }
 
 function renderCliente() {
   const box = document.getElementById("seguimientoCliente");
   if (!box) return;
-
-  const ultimos = pedidos.slice().reverse().slice(0, 3);
-
-  box.innerHTML = ultimos.map(p => `
+  box.innerHTML = pedidos.slice().reverse().slice(0, 3).map(p => `
     <div class="order-tracking">
       <h3>${p.id} - ${p.producto}</h3>
-      <p>
-        <strong>Cliente:</strong> ${p.cliente}<br>
-        <strong>Dirección:</strong> ${p.direccion}<br>
-        <strong>Estado:</strong> ${badge(p.estado)}
-      </p>
-
+      <p><strong>Cliente:</strong> ${p.cliente}<br><strong>Estado:</strong> ${badge(p.estado)}</p>
       <div class="tracking-line">
-        <div class="tracking-step ${isActive(p.estado, ['recibido','en preparación','listo','preparado','asignado','en reparto','entregado'])}">
-          Recibido
-        </div>
-        <div class="tracking-step ${isActive(p.estado, ['en preparación','listo','preparado','asignado','en reparto','entregado'])}">
-          Preparación
-        </div>
-        <div class="tracking-step ${isActive(p.estado, ['listo','preparado','asignado','en reparto','entregado'])}">
-          Listo
-        </div>
-        <div class="tracking-step ${isActive(p.estado, ['asignado','en reparto','entregado'])}">
-          Reparto
-        </div>
-        <div class="tracking-step ${isActive(p.estado, ['entregado'])}">
-          Entregado
-        </div>
+        <div class="tracking-step ${isActive(p.estado, ['recibido','en preparación','listo','preparado','asignado','en reparto','entregado'])}">Recibido</div>
+        <div class="tracking-step ${isActive(p.estado, ['en preparación','listo','preparado','asignado','en reparto','entregado'])}">Cocina</div>
+        <div class="tracking-step ${isActive(p.estado, ['asignado','en reparto','entregado'])}">Reparto</div>
+        <div class="tracking-step ${isActive(p.estado, ['entregado'])}">Entregado</div>
       </div>
     </div>
   `).join("");
@@ -199,80 +160,26 @@ function renderCajero() {
   setText("cajKpiListos", pedidos.filter(p => ["listo", "preparado"].includes(p.estado)).length);
   setText("cajKpiReparto", pedidos.filter(p => p.estado === "en reparto").length);
 
-  const tbody = document.getElementById("tablaCajero");
-  if (!tbody) return;
-
-  tbody.innerHTML = pedidos.map(p => `
-    <tr>
-      <td>${p.id}</td>
-      <td>${p.cliente}</td>
-      <td>${badge(p.estado)}</td>
-      <td>
-        <button class="btn blue" onclick="seleccionarPedido('${p.id}')">Ver detalle</button>
-      </td>
-    </tr>
+  document.getElementById("tablaCajero").innerHTML = pedidos.map(p => `
+    <tr><td>${p.id}</td><td>${p.cliente}</td><td>${badge(p.estado)}</td>
+    <td><button class="btn blue" onclick="seleccionarPedido('${p.id}')">Ver</button></td></tr>
   `).join("");
 }
 
 function renderCocina() {
-  const tbody = document.getElementById("tablaCocina");
-  if (!tbody) return;
-
-  const cocinaPedidos = pedidos.filter(p =>
-    ["recibido", "en preparación", "listo"].includes(p.estado)
-  );
-
-  if (cocinaPedidos.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="5">No hay pedidos pendientes en cocina.</td>
-      </tr>
-    `;
-    return;
-  }
-
-  tbody.innerHTML = cocinaPedidos.map(p => `
-    <tr>
-      <td>${p.id}</td>
-      <td>${p.producto}</td>
-      <td>${p.indicaciones}</td>
-      <td>${badge(p.estado)}</td>
-      <td>
-        <button class="btn blue" onclick="seleccionarPedido('${p.id}')">Ver</button>
-        <button class="btn" onclick="prepararPedido('${p.id}')">Preparar</button>
-        <button class="btn green" onclick="pedidoListo('${p.id}')">Listo</button>
-      </td>
-    </tr>
+  const pend = pedidos.filter(p => ["recibido", "en preparación", "listo"].includes(p.estado));
+  document.getElementById("tablaCocina").innerHTML = pend.map(p => `
+    <tr><td>${p.id}</td><td>${p.producto}</td><td>${badge(p.estado)}</td>
+    <td><button class="btn blue" onclick="seleccionarPedido('${p.id}')">Receta</button>
+    <button class="btn" onclick="prepararPedido('${p.id}')">Preparar</button></td></tr>
   `).join("");
 }
 
 function renderMotorizado() {
-  const tbody = document.getElementById("tablaMotorizado");
-  if (!tbody) return;
-
-  const lista = pedidos.filter(p =>
-    ["preparado", "asignado", "en reparto"].includes(p.estado)
-  );
-
-  if (lista.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="5">No tienes pedidos asignados por el momento.</td>
-      </tr>
-    `;
-    return;
-  }
-
-  tbody.innerHTML = lista.map(p => `
-    <tr>
-      <td>${p.id}</td>
-      <td>${p.cliente}</td>
-      <td>${p.direccion}</td>
-      <td>${badge(p.estado)}</td>
-      <td>
-        <button class="btn blue" onclick="seleccionarPedido('${p.id}')">Ver entrega</button>
-      </td>
-    </tr>
+  const lista = pedidos.filter(p => ["preparado", "asignado", "en reparto"].includes(p.estado));
+  document.getElementById("tablaMotorizado").innerHTML = lista.map(p => `
+    <tr><td>${p.id}</td><td>${p.cliente}</td><td>${badge(p.estado)}</td>
+    <td><button class="btn blue" onclick="seleccionarPedido('${p.id}')">Ruta</button></td></tr>
   `).join("");
 }
 
@@ -282,597 +189,164 @@ function renderAdmin() {
   setText("admPreparacion", pedidos.filter(p => p.estado === "en preparación").length);
   setText("admReparto", pedidos.filter(p => p.estado === "en reparto").length);
 
-  const tbody = document.getElementById("tablaAdmin");
-  if (!tbody) return;
-
-  tbody.innerHTML = pedidos.map(p => `
-    <tr>
-      <td>${p.id}</td>
-      <td>${p.cliente}</td>
-      <td>${badge(p.estado)}</td>
-      <td>${p.motorizado}</td>
-      <td>
-        <button class="btn blue" onclick="seleccionarPedido('${p.id}')">Ver detalle</button>
-      </td>
-    </tr>
+  document.getElementById("tablaAdmin").innerHTML = pedidos.map(p => `
+    <tr><td>${p.id}</td><td>${p.cliente}</td><td>${badge(p.estado)}</td><td>${p.motorizado}</td>
+    <td><button class="btn blue" onclick="seleccionarPedido('${p.id}')">Auditar</button></td></tr>
   `).join("");
 }
 
+/* --- MÓDULO FINANCIERO / REPORTES --- */
+function cierreCaja() {
+  toast("💰 Procesando Cierre de Caja...");
+  setTimeout(() => { toast("✅ Cierre exitoso. Total reportado: S/ 3,450.00."); }, 1800);
+}
+
+function generarReportePDF() {
+  toast("📄 Compilando datos operativos y financieros...");
+  setTimeout(() => { toast("✅ Reporte_PizzaRaul_Operaciones.pdf exportado con éxito."); }, 2000);
+}
+
+/* --- INVENTARIO INTELIGENTE --- */
+function renderInventario() {
+  const html = Object.keys(inventario).map(item => {
+    const cantidad = inventario[item];
+    const umbral = umbralesInventario[item] || 15;
+    const alerta = cantidad <= umbral;
+    const btn = alerta ? `<button class="btn-solicitar" onclick="solicitarAbastecimiento('${item}')">Solicitar Insumo</button>` : '';
+
+    return `<div class="inv-item ${alerta ? 'low' : ''}">${item}<span>${cantidad}</span>${btn}</div>`;
+  }).join("");
+
+  const contCocina = document.getElementById("inventarioCocina");
+  const contAdmin = document.getElementById("inventoryContainer");
+  if (contCocina) contCocina.innerHTML = html;
+  if (contAdmin) contAdmin.innerHTML = html;
+}
+
+function solicitarAbastecimiento(insumo) {
+  toast(`📡 Enviando solicitud de [${insumo}] a Central / Sede principal...`);
+  setTimeout(() => {
+    inventario[insumo] += 50; 
+    renderInventario(); 
+    toast(`✅ Abastecimiento recibido: +50 unidades de ${insumo}.`);
+  }, 2500);
+}
+
+/* --- ACCIONES --- */
 function crearPedidoCliente() {
-  const pedido = {
-    id: generarId(),
-    cliente: document.getElementById("cliNombre").value,
-    telefono: document.getElementById("cliTelefono").value,
-    direccion: document.getElementById("cliDireccion").value,
-    producto: document.getElementById("cliProducto").value,
-    pago: document.getElementById("cliPago").value,
-    indicaciones: document.getElementById("cliIndicaciones").value,
-    estado: "recibido",
-    motorizado: "-"
+  const p = {
+    id: "PR-" + Math.floor(1000+Math.random()*9000), cliente: document.getElementById("cliNombre").value,
+    telefono: document.getElementById("cliTelefono").value, direccion: document.getElementById("cliDireccion").value,
+    producto: document.getElementById("cliProducto").value, pago: document.getElementById("cliPago").value,
+    indicaciones: document.getElementById("cliIndicaciones").value, estado: "recibido", motorizado: "-"
   };
-
-  if (!pedido.cliente || !pedido.telefono || !pedido.direccion) {
-    toast("Completa los datos obligatorios del pedido.");
-    return;
-  }
-
-  pedidos.push(pedido);
-  selectedPedido = pedido.id;
-  renderAll();
-  toast("Pedido registrado correctamente.");
+  pedidos.push(p); selectedPedido = p.id; renderAll(); toast("Pedido registrado.");
 }
 
 function registrarDesdeCaja() {
-  const pedido = {
-    id: generarId(),
-    cliente: document.getElementById("cajNombre").value,
-    telefono: document.getElementById("cajTelefono").value,
-    direccion: document.getElementById("cajDireccion").value,
-    producto: document.getElementById("cajProducto").value,
-    pago: document.getElementById("cajPago").value,
-    indicaciones: "Pedido validado desde caja.",
-    estado: "recibido",
-    motorizado: "-"
+  const p = {
+    id: "PR-" + Math.floor(1000+Math.random()*9000), cliente: document.getElementById("cajNombre").value,
+    telefono: document.getElementById("cajTelefono").value, direccion: document.getElementById("cajDireccion").value,
+    producto: document.getElementById("cajProducto").value, pago: document.getElementById("cajPago").value,
+    indicaciones: "Validado en caja.", estado: "recibido", motorizado: "-"
   };
-
-  if (!pedido.cliente || !pedido.telefono || !pedido.direccion) {
-    toast("Validación fallida: faltan datos del cliente o entrega.");
-    return;
-  }
-
-  pedidos.push(pedido);
-  selectedPedido = pedido.id;
-  renderAll();
-  toast("Pedido registrado y validado.");
+  pedidos.push(p); selectedPedido = p.id; renderAll(); toast("Pedido registrado en caja.");
 }
 
 function seleccionarPedido(id) {
-  selectedPedido = id;
-  const pedido = pedidos.find(p => p.id === id);
-
-  renderDetallePedido(pedido);
-  renderAll();
-
-  if (currentRole === "motorizado") {
-    setTimeout(() => dibujarRutaEnMapa(pedido), 250);
-  }
-
-  toast("Pedido seleccionado: " + pedido.id + " - " + pedido.cliente);
+  selectedPedido = id; const p = pedidos.find(x => x.id === id);
+  renderDetallePedido(p); renderAll();
+  if (currentRole === "motorizado" || currentRole === "admin") { setTimeout(() => dibujarRutaEnMapa(p), 250); }
 }
 
 function enviarACocina() {
-  const pedido = obtenerSeleccionado();
-
-  if (!pedido) return;
-
-  if (pedido.estado !== "recibido") {
-    toast("Solo se puede enviar a cocina un pedido recibido.");
-    return;
-  }
-
-  pedido.estado = "en preparación";
-  renderAll();
-  toast("Pedido enviado a cocina.");
+  const p = pedidos.find(x => x.id === selectedPedido);
+  if(p && p.estado === "recibido") { p.estado = "en preparación"; renderAll(); toast("Enviado a cocina."); }
 }
-
 function prepararPedido(id) {
-  const pedido = pedidos.find(p => p.id === id);
-  pedido.estado = "en preparación";
-  selectedPedido = id;
-  renderAll();
-  toast("Cocina inició preparación del pedido.");
+  const p = pedidos.find(x => x.id === id); p.estado = "en preparación"; selectedPedido = id; renderAll(); toast("Inicia preparación.");
 }
-
-function pedidoListo(id) {
-  const pedido = pedidos.find(p => p.id === id);
-  pedido.estado = "listo";
-  selectedPedido = id;
-  renderAll();
-  toast("Pedido marcado como listo.");
+function asignarMotorizado() {
+  const p = pedidos.find(x => x.id === selectedPedido) || pedidos.find(x => ["listo", "preparado"].includes(x.estado));
+  if(p) { p.estado = "asignado"; p.motorizado = "Miguel R."; selectedPedido = p.id; renderAll(); toast("Motorizado asignado."); }
+}
+function registrarSalida() {
+  const p = pedidos.find(x => x.id === selectedPedido);
+  if(p) { p.estado = "en reparto"; renderAll(); toast("Salió a reparto."); }
+}
+function registrarEntrega() {
+  const p = pedidos.find(x => x.id === selectedPedido);
+  if(p) { p.estado = "entregado"; renderAll(); toast("Entregado al cliente."); }
 }
 
 function validarDespacho() {
-  const checks = [...document.querySelectorAll(".check")];
-  const ok = checks.every(c => c.checked);
-  const resultado = document.getElementById("checkResultado");
-
-  if (!ok) {
-    resultado.innerHTML = `
-      <div class="error-box">
-        No se puede validar el pedido. Falta completar el checklist.
-      </div>
-    `;
-    toast("Checklist incompleto.");
-    return;
-  }
-
-  let pedido = obtenerSeleccionado(false);
-
-  if (!pedido) {
-    pedido = pedidos.find(p => p.estado === "listo");
-  }
-
-  if (!pedido) {
-    resultado.innerHTML = `
-      <div class="error-box">
-        No hay pedido listo para validar.
-      </div>
-    `;
-    return;
-  }
-
-  pedido.estado = "preparado";
-
-  resultado.innerHTML = `
-    <div class="success-box">
-      Pedido ${pedido.id} validado correctamente. Listo para reparto.
-    </div>
-  `;
-
-  checks.forEach(c => c.checked = false);
-  renderAll();
-  toast("Pedido validado antes del despacho.");
+  const checks = [...document.querySelectorAll(".receta-check")];
+  if(checks.length > 0 && !checks.every(c => c.checked)) { toast("Completa el checklist."); return; }
+  const p = pedidos.find(x => x.id === selectedPedido);
+  if(!p) return;
+  const rec = recetas[p.producto];
+  if (rec) { for (let i in rec.ingredientes) { inventario[i] = Math.max(0, inventario[i] - rec.ingredientes[i]); } }
+  p.estado = "preparado"; renderAll(); toast("Orden completada. Inventario descontado.");
+  const res = document.getElementById("checkResultado");
+  if(res) res.innerHTML = `<div class="success-box">Orden validada. Inventario actualizado.</div>`;
 }
 
-function asignarMotorizado() {
-  let pedido = obtenerSeleccionado(false);
-
-  if (!pedido) {
-    pedido = pedidos.find(p => ["listo", "preparado"].includes(p.estado));
-  }
-
-  if (!pedido) {
-    toast("No hay pedidos listos o preparados para asignar.");
-    return;
-  }
-
-  pedido.estado = "asignado";
-  pedido.motorizado = "Miguel R.";
-  selectedPedido = pedido.id;
-
-  renderAll();
-  toast("Pedido asignado a motorizado.");
-}
-
-function optimizarRuta() {
-  const pedido = obtenerSeleccionado();
-
-  if (!pedido) return;
-
-  dibujarRutaEnMapa(pedido);
-
-  document.getElementById("rutaInfo").innerHTML = `
-    <strong>Ruta sugerida para ${pedido.id}</strong><br>
-    Cliente: ${pedido.cliente}<br>
-    Dirección: ${pedido.direccion}<br>
-    Zona: ${obtenerDistrito(pedido.direccion)}<br>
-    Distancia estimada: ${calcularDistanciaSimulada(pedido.direccion)} km<br>
-    Tiempo estimado: ${calcularTiempoRuta(pedido.direccion)} minutos<br>
-    Tráfico estimado: moderado<br>
-    Recomendación: seguir la ruta sugerida y confirmar la entrega al llegar.
-  `;
-
-  toast("Ruta calculada correctamente en el mapa.");
-}
-
-function registrarSalida() {
-  const pedido = obtenerSeleccionado();
-
-  if (!pedido) return;
-
-  if (!["asignado", "preparado"].includes(pedido.estado)) {
-    toast("El pedido debe estar asignado antes de registrar salida.");
-    return;
-  }
-
-  pedido.estado = "en reparto";
-  renderAll();
-  toast("Salida registrada.");
-}
-
-function registrarEntrega() {
-  const pedido = obtenerSeleccionado();
-
-  if (!pedido) return;
-
-  if (pedido.estado !== "en reparto") {
-    toast("Solo se puede entregar un pedido que esté en reparto.");
-    return;
-  }
-
-  pedido.estado = "entregado";
-  renderAll();
-  toast("Entrega confirmada.");
-}
-
-function generarReporte() {
-  toast("Reporte operativo generado.");
-}
-
-/* DETALLE */
-
-function renderDetallePedido(pedido) {
-  if (!pedido) return;
-
-  const htmlDetalle = crearHtmlDetallePedido(pedido);
-
-  const detalleCajero = document.getElementById("detalleCajero");
-  const detalleCocina = document.getElementById("detalleCocina");
-  const detalleMotorizado = document.getElementById("detalleMotorizado");
-  const detalleAdmin = document.getElementById("detalleAdmin");
-
-  if (detalleCajero) detalleCajero.innerHTML = htmlDetalle;
-  if (detalleCocina) detalleCocina.innerHTML = htmlDetalle;
-  if (detalleMotorizado) detalleMotorizado.innerHTML = crearHtmlDetalleEntrega(pedido);
-  if (detalleAdmin) detalleAdmin.innerHTML = htmlDetalle;
-}
-
-function crearHtmlDetallePedido(pedido) {
-  return `
+/* --- DETALLES Y MAPA --- */
+function renderDetallePedido(p) {
+  const html = `
     <div class="order-detail">
-      <div class="order-detail-header">
-        <h3>${pedido.id}</h3>
-        <p>${pedido.producto}</p>
-      </div>
-
+      <div class="order-detail-header"><h3>${p.id}</h3><p>${p.producto}</p></div>
       <div class="order-detail-body">
-        <div class="detail-item">
-          <span>Cliente</span>
-          <strong>${pedido.cliente}</strong>
-        </div>
-
-        <div class="detail-item">
-          <span>Teléfono</span>
-          <strong>${pedido.telefono}</strong>
-        </div>
-
-        <div class="detail-item full-detail">
-          <span>Dirección de entrega</span>
-          <strong>${pedido.direccion}</strong>
-        </div>
-
-        <div class="detail-item">
-          <span>Método de pago</span>
-          <strong>${pedido.pago}</strong>
-        </div>
-
-        <div class="detail-item">
-          <span>Estado actual</span>
-          <strong>${badge(pedido.estado)}</strong>
-        </div>
-
-        <div class="detail-item">
-          <span>Motorizado</span>
-          <strong>${pedido.motorizado}</strong>
-        </div>
-
-        <div class="detail-item">
-          <span>Tiempo estimado</span>
-          <strong>${calcularTiempoEstimado(pedido.estado)}</strong>
-        </div>
-
-        <div class="detail-item full-detail">
-          <span>Indicaciones</span>
-          <strong>${pedido.indicaciones}</strong>
-        </div>
-      </div>
-
-      <div class="status-history">
-        <h4>Historial del pedido</h4>
-        ${crearTimeline(pedido.estado)}
+        <div class="detail-item"><span>Cliente</span><strong>${p.cliente}</strong></div>
+        <div class="detail-item full-detail"><span>Dirección</span><strong>${p.direccion}</strong></div>
+        <div class="detail-item"><span>Estado</span><strong>${badge(p.estado)}</strong></div>
       </div>
     </div>
   `;
+  ['Cajero', 'Motorizado', 'Admin'].forEach(v => { const el = document.getElementById(`detalle${v}`); if(el) el.innerHTML = html; });
+  const dCoc = document.getElementById("detalleCocina");
+  if(dCoc) {
+    dCoc.innerHTML = html;
+    document.getElementById("recetaChecklistContainer").classList.remove("hidden");
+    const rec = recetas[p.producto] || { ingredientes:{}, pasos:["Preparar","Empacar"] };
+    document.getElementById("checklistReceta").innerHTML = rec.pasos.map((paso, i) => `<label><span>${i+1}. ${paso}</span><input type="checkbox" class="check receta-check"></label>`).join("");
+  }
 }
-
-function crearHtmlDetalleEntrega(pedido) {
-  return `
-    <div class="order-detail">
-      <div class="order-detail-header">
-        <h3>${pedido.id}</h3>
-        <p>Entrega asignada</p>
-      </div>
-
-      <div class="order-detail-body">
-        <div class="detail-item">
-          <span>Cliente</span>
-          <strong>${pedido.cliente}</strong>
-        </div>
-
-        <div class="detail-item">
-          <span>Teléfono</span>
-          <strong>${pedido.telefono}</strong>
-        </div>
-
-        <div class="detail-item full-detail">
-          <span>Dirección</span>
-          <strong>${pedido.direccion}</strong>
-        </div>
-
-        <div class="detail-item">
-          <span>Estado</span>
-          <strong>${badge(pedido.estado)}</strong>
-        </div>
-
-        <div class="detail-item">
-          <span>Pago</span>
-          <strong>${pedido.pago}</strong>
-        </div>
-
-        <div class="detail-item full-detail">
-          <span>Indicaciones de entrega</span>
-          <strong>${pedido.indicaciones}</strong>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function crearTimeline(estadoActual) {
-  const estados = [
-    "recibido",
-    "en preparación",
-    "listo",
-    "preparado",
-    "asignado",
-    "en reparto",
-    "entregado"
-  ];
-
-  const indexActual = estados.indexOf(estadoActual);
-
-  return `
-    <div class="timeline">
-      ${estados.map((estado, index) => `
-        <div class="timeline-item">
-          <span class="timeline-dot ${index <= indexActual ? "done" : ""}"></span>
-          <span>${formatearEstado(estado)}</span>
-        </div>
-      `).join("")}
-    </div>
-  `;
-}
-
-function formatearEstado(estado) {
-  const nombres = {
-    "recibido": "Pedido recibido",
-    "en preparación": "Pedido en preparación",
-    "listo": "Pedido listo",
-    "preparado": "Pedido validado para despacho",
-    "asignado": "Pedido asignado a motorizado",
-    "en reparto": "Pedido en reparto",
-    "entregado": "Pedido entregado"
-  };
-
-  return nombres[estado] || estado;
-}
-
-function calcularTiempoEstimado(estado) {
-  const tiempos = {
-    "recibido": "45 - 55 min",
-    "en preparación": "35 - 45 min",
-    "listo": "25 - 30 min",
-    "preparado": "20 - 25 min",
-    "asignado": "18 - 22 min",
-    "en reparto": "10 - 18 min",
-    "entregado": "Finalizado"
-  };
-
-  return tiempos[estado] || "Por calcular";
-}
-
-/* MAPA CON RUTA REAL */
 
 function inicializarMapa() {
-  const mapaDiv = document.getElementById("mapaRuta");
-  if (!mapaDiv) return;
-
-  if (typeof L === "undefined") {
-    mapaDiv.innerHTML = "No se pudo cargar el mapa. Verifica tu conexión a internet.";
-    return;
-  }
-
-  if (mapa) {
-    setTimeout(() => mapa.invalidateSize(), 200);
-    return;
-  }
-
-  const pizzaRaul = [-12.0772, -77.0826];
-
-  mapa = L.map("mapaRuta").setView(pizzaRaul, 14);
-
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "© OpenStreetMap"
-  }).addTo(mapa);
-
-  marcadorTienda = L.marker(pizzaRaul)
-    .addTo(mapa)
-    .bindPopup("🍕 Pizza Raúl<br>Local principal");
-
-  marcadorTienda.openPopup();
-
+  const md = document.getElementById("mapaRuta");
+  if (!md || typeof L === "undefined") return;
+  if (mapa) { setTimeout(() => mapa.invalidateSize(), 200); return; }
+  mapa = L.map("mapaRuta").setView([-12.0772, -77.0826], 14);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(mapa);
+  marcadorTienda = L.marker([-12.0772, -77.0826]).addTo(mapa).bindPopup("🍕 Pizza Raúl").openPopup();
   setTimeout(() => mapa.invalidateSize(), 300);
 }
 
-function obtenerCoordenadasCliente(direccion) {
-  const texto = direccion.toLowerCase();
-
-  if (texto.includes("san miguel")) return [-12.0764, -77.0928];
-  if (texto.includes("pueblo libre")) return [-12.0769, -77.0677];
-  if (texto.includes("magdalena")) return [-12.0916, -77.0715];
-  if (texto.includes("la marina")) return [-12.0785, -77.0859];
-
-  return [-12.0818, -77.0756];
-}
-
-function dibujarRutaEnMapa(pedido) {
+function optimizarRuta() {
+  const p = pedidos.find(x => x.id === selectedPedido);
+  if (!p) return;
   inicializarMapa();
-
-  if (!mapa) return;
-
-  const origen = [-12.0772, -77.0826];
-  const destino = obtenerCoordenadasCliente(pedido.direccion);
-
-  if (rutaControl) {
-    mapa.removeControl(rutaControl);
-  }
-
-  if (marcadorCliente) {
-    mapa.removeLayer(marcadorCliente);
-  }
-
-  marcadorCliente = L.marker(destino)
-    .addTo(mapa)
-    .bindPopup(`📍 Cliente<br>${pedido.cliente}<br>${pedido.direccion}`);
-
+  if (rutaControl) mapa.removeControl(rutaControl);
+  if (marcadorCliente) mapa.removeLayer(marcadorCliente);
+  
+  const dest = p.direccion.toLowerCase().includes("san miguel") ? [-12.0764, -77.0928] : [-12.0818, -77.0756];
+  marcadorCliente = L.marker(dest).addTo(mapa).bindPopup(`📍 ${p.cliente}`).openPopup();
+  
   rutaControl = L.Routing.control({
-    waypoints: [
-      L.latLng(origen[0], origen[1]),
-      L.latLng(destino[0], destino[1])
-    ],
-    routeWhileDragging: false,
-    addWaypoints: false,
-    draggableWaypoints: false,
-    fitSelectedRoutes: true,
-    show: false,
-    lineOptions: {
-      styles: [
-        {
-          color: "#e5092a",
-          weight: 6,
-          opacity: 0.9
-        }
-      ]
-    },
-    createMarker: function () {
-      return null;
-    }
+    waypoints: [L.latLng(-12.0772, -77.0826), L.latLng(dest[0], dest[1])],
+    routeWhileDragging: false, show: false,
+    lineOptions: { styles: [{ color: "#e5092a", weight: 6, opacity: 0.9 }] },
+    createMarker: () => null
   }).addTo(mapa);
-
-  marcadorCliente.openPopup();
-
-  setTimeout(() => mapa.invalidateSize(), 200);
+  
+  const ri = document.getElementById("rutaInfo");
+  if (ri) ri.innerHTML = `<strong>Ruta calculada para ${p.id}</strong><br>Distancia: ~4.5 km<br>Tiempo: ~18 min`;
+  toast("Ruta calculada en el mapa.");
 }
 
-function obtenerDistrito(direccion) {
-  const texto = direccion.toLowerCase();
-
-  if (texto.includes("san miguel")) return "San Miguel";
-  if (texto.includes("pueblo libre")) return "Pueblo Libre";
-  if (texto.includes("magdalena")) return "Magdalena";
-  if (texto.includes("la marina")) return "La Marina";
-
-  return "Destino del cliente";
-}
-
-function calcularDistanciaSimulada(direccion) {
-  const texto = direccion.toLowerCase();
-
-  if (texto.includes("san miguel")) return "3.2";
-  if (texto.includes("pueblo libre")) return "4.8";
-  if (texto.includes("magdalena")) return "5.6";
-  if (texto.includes("la marina")) return "2.9";
-
-  return "4.5";
-}
-
-function calcularTiempoRuta(direccion) {
-  const texto = direccion.toLowerCase();
-
-  if (texto.includes("san miguel")) return "14";
-  if (texto.includes("pueblo libre")) return "18";
-  if (texto.includes("magdalena")) return "22";
-  if (texto.includes("la marina")) return "12";
-
-  return "20";
-}
-
-/* UTILIDADES */
-
-function obtenerSeleccionado(show = true) {
-  if (!selectedPedido) {
-    if (show) toast("Selecciona primero un pedido.");
-    return null;
-  }
-
-  const pedido = pedidos.find(p => p.id === selectedPedido);
-
-  if (!pedido && show) {
-    toast("No se encontró el pedido seleccionado.");
-  }
-
-  return pedido;
-}
-
-function generarId() {
-  return "PR-" + Math.floor(1000 + Math.random() * 9000);
-}
-
-function badge(estado) {
-  const classMap = {
-    "recibido": "recibido",
-    "en preparación": "preparacion",
-    "listo": "listo",
-    "preparado": "preparado",
-    "asignado": "asignado",
-    "en reparto": "reparto",
-    "entregado": "entregado",
-    "incidencia": "incidencia"
-  };
-
-  return `<span class="badge ${classMap[estado]}">${estado.toUpperCase()}</span>`;
-}
-
-function isActive(current, list) {
-  return list.includes(current) ? "active" : "";
-}
-
-function setText(id, value) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = value;
-}
-
-function limpiarDetalles() {
-  const detalleCajero = document.getElementById("detalleCajero");
-  const detalleCocina = document.getElementById("detalleCocina");
-  const detalleMotorizado = document.getElementById("detalleMotorizado");
-  const detalleAdmin = document.getElementById("detalleAdmin");
-  const rutaInfo = document.getElementById("rutaInfo");
-
-  if (detalleCajero) detalleCajero.innerHTML = "Selecciona una orden para visualizar información completa del pedido.";
-  if (detalleCocina) detalleCocina.innerHTML = "Selecciona un pedido para ver productos, indicaciones y control de preparación.";
-  if (detalleMotorizado) detalleMotorizado.innerHTML = "Selecciona un pedido para ver la información de entrega.";
-  if (detalleAdmin) detalleAdmin.innerHTML = "Selecciona un pedido para ver el detalle administrativo.";
-  if (rutaInfo) rutaInfo.innerHTML = "Selecciona un pedido asignado para calcular la ruta.";
-}
-
-function toast(msg) {
-  const box = document.getElementById("toast");
-  box.textContent = msg;
-  box.classList.add("show");
-
-  setTimeout(() => {
-    box.classList.remove("show");
-  }, 2800);
-}
+function badge(e) { return `<span class="badge ${e === 'recibido'?'recibido':e==='en preparación'?'preparacion':e==='en reparto'?'reparto':e==='entregado'?'entregado':'listo'}">${e.toUpperCase()}</span>`; }
+function isActive(c, l) { return l.includes(c) ? "active" : ""; }
+function setText(id, v) { const e = document.getElementById(id); if(e) e.textContent = v; }
+function limpiarDetalles() { ['Cajero','Cocina','Motorizado','Admin'].forEach(v => { const e = document.getElementById(`detalle${v}`); if(e) e.innerHTML = "Selecciona una orden."; }); }
+function toast(m) { const b = document.getElementById("toast"); b.textContent = m; b.classList.add("show"); setTimeout(() => b.classList.remove("show"), 2800); }
